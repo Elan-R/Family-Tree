@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" style="width:100%; height:100%;">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Family Tree</title>
+</head>
+
+<body style="width:100%; height:100%; margin:0;">
+    <div id="tree">
+        <svg id="svg" height=100% width="100%"></svg>
+    </div>
+</body>
+
+<style>
+    .person {
+        position: absolute;
+        display: inline-block;
+        border: solid;
+        border-width: 2px;
+        padding: 5px;
+    }
+
+    #tree {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: green;
+    }
+</style>
+
+<script>
+    function fromJson(people) {
+
+        const personMap = JSON.parse(people).reduce(function (obj, p) {
+            obj[p.id] = p;
+            return obj;
+        }, {});
+
+        for (const person of Object.values(personMap)) {
+            person.spouse = personMap[person.spouse];
+            const childrenIDs = person.children;
+            person.children = [];
+            if (childrenIDs) {
+                for (const s of childrenIDs) {
+                    person.children.push(personMap[s]);
+                }
+            }
+        }
+
+        return personMap;
+
+    }
+
+    function toJson(personMap) {
+
+        const people = [];
+
+        for (const person of Object.values(personMap)) {
+            if (person.spouse) {
+                person.spouse = person.spouse.id;
+            }
+            if (person.children.length == 0) {
+                delete person.children;
+            } else {
+                const children = person.children;
+                person.children = [];
+                for (const s of children) {
+                    person.children.push(s.id);
+                }
+            }
+            people.push(person);
+        }
+
+        return JSON.stringify(people);
+
+    }
+
+    // dummy data REMOVE REMOVE REMOVE REMOVE REMOVE
+    var p = JSON.stringify([]);
+
+    const TREE_X = 1200;
+    const TREE_Y = -500;
+    const PERSON_SPACE = 20;
+    const GEN_SPACE = 55;
+
+    function buildTree(rootId, people, tree, svg) {
+        const parent = Object.values(people).find(p => p.children.find(c => c.id == rootId));
+        rootId = parent ? parent.id : rootId;
+
+        const divs = {};
+        const lines = [];
+        for (const id in people) {
+            const div = document.createElement("div");
+            div.classList.add("person");
+            div.innerText = people[id].name;
+            div.onclick = function(e) {
+                e = e || window.event;
+                e.preventDefault();
+                while (lines.length != 0) {
+                    lines.pop().remove();
+                }
+                for (const divId in divs) {
+                    divs[divId].remove();
+                    delete divs[divId];
+                }
+                buildTree(id, people, tree, svg);
+            }
+            divs[id] = div;
+        }
+
+        function move(id, x, y) {
+            const div = divs[id];
+            div.style.top = div.offsetTop - y + "px";
+            div.style.left = div.offsetLeft - x + "px";
+        }
+
+        function relMove(id, sourceId, x) {
+            const div = divs[id];
+            const sourceDiv = divs[sourceId];
+            div.style.top = parseFloat(sourceDiv.style.top) + "px";
+            div.style.left = parseFloat(sourceDiv.style.left) + sourceDiv.offsetWidth - x + "px";
+        }
+
+        function createLine() {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("stroke", "black");
+            line.setAttribute("stroke-width", 2);
+            lines.push(line);
+            svg.appendChild(line);
+            return line;
+        }
+
+        function drawSpouseLine(id1, id2) {
+            const rect1 = divs[id1].getBoundingClientRect();
+            const rect2 = divs[id2].getBoundingClientRect();
+            const y = (rect1.top + rect1.bottom) / 2;
+            const line = createLine();
+            line.setAttribute("x1", rect1.right);
+            line.setAttribute("y1", y);
+            line.setAttribute("x2", rect2.left + 1);
+            line.setAttribute("y2", y);
+        }
+
+        function drawSpouseToChildrenLine(id1, id2) {
+            const rect1 = divs[id1].getBoundingClientRect();
+            const rect2 = divs[id2].getBoundingClientRect();
+            const x = (rect1.right + rect2.left) / 2;
+            const y = (rect1.top + rect1.bottom) / 2;
+            const line = createLine();
+            line.setAttribute("x1", x);
+            line.setAttribute("y1", y);
+            line.setAttribute("x2", x);
+            line.setAttribute("y2", y + GEN_SPACE / 2);
+        }
+
+        function drawChildLine(id) {
+            const rect = divs[id].getBoundingClientRect();
+            const x = (rect.left + rect.right) / 2;
+            const line = createLine();
+            line.setAttribute("x1", x);
+            line.setAttribute("y1", rect.top);
+            line.setAttribute("x2", x);
+            line.setAttribute("y2", (rect.top + rect.bottom - GEN_SPACE) / 2);
+        }
+
+        function drawConnectChildrenLine(id1, id2) {
+            const rect1 = divs[id1].getBoundingClientRect();
+            const rect2 = divs[id2].getBoundingClientRect();
+            const y = (rect1.top + rect1.bottom - GEN_SPACE) / 2;
+            const line = createLine();
+            line.setAttribute("x1", (rect1.left + rect1.right) / 2 - 1);
+            line.setAttribute("y1", y);
+            line.setAttribute("x2", (rect2.left + rect2.right) / 2 + 1);
+            line.setAttribute("y2", y);
+        }
+
+        function layOutPeople(currentId, x, y) {
+            const current = people[currentId];
+
+            let childrenTreeWidth = 0;
+            let child = undefined;
+            for (child of current.children) {
+                childrenTreeWidth += layOutPeople(child.id, x - childrenTreeWidth, y - GEN_SPACE);
+                drawChildLine(child.id);
+            }
+            tree.appendChild(divs[currentId]);
+            if (child) {
+                drawConnectChildrenLine(current.children[0].id, child.id);
+                childrenTreeWidth -= PERSON_SPACE;
+                move(currentId, x - (childrenTreeWidth - PERSON_SPACE) / 2 + divs[currentId].offsetWidth, y);
+            } else {
+                move(currentId, x - childrenTreeWidth / 2, y);
+            }
+
+            let currentWidthWithSpouse = divs[currentId].offsetWidth;
+            if (current.spouse) {
+                tree.appendChild(divs[current.spouse.id]);
+                currentWidthWithSpouse += divs[current.spouse.id].offsetWidth + PERSON_SPACE;
+                relMove(current.spouse.id, currentId, -PERSON_SPACE);
+                drawSpouseLine(currentId, current.spouse.id);
+                if (child) {
+                    drawSpouseToChildrenLine(currentId, current.spouse.id);
+                }
+            }
+
+            return Math.max(childrenTreeWidth, currentWidthWithSpouse) + PERSON_SPACE;
+        }
+
+        layOutPeople(rootId, TREE_X, TREE_Y);
+
+        tree.mouseOver = false;
+        tree.onmouseover = function () {
+            tree.mouseOver = true;
+        }
+        tree.onmouseout = function () {
+            tree.mouseOver = false;
+        }
+
+        var startX, startY;
+
+        tree.onmousedown = function (e) {
+            e = e || window.event;
+            if (tree.mouseOver == false) { return; }
+            e.preventDefault();
+            startX = e.clientX;
+            startY = e.clientY;
+            document.onmousemove = onMouseMove;
+            document.onmouseup = onMouseUp;
+        }
+
+        function onMouseMove(e) {
+            e = e || window.event;
+            e.preventDefault();
+            const x = e.clientX - startX;
+            const y = e.clientY - startY;
+            for (const div of Object.values(divs)) {
+                div.style.top = div.offsetTop + y + "px";
+                div.style.left = div.offsetLeft + x + "px";
+            }
+            for (const line of lines) {
+                line.setAttribute("x1", parseFloat(line.getAttribute("x1")) + x);
+                line.setAttribute("y1", parseFloat(line.getAttribute("y1")) + y);
+                line.setAttribute("x2", parseFloat(line.getAttribute("x2")) + x);
+                line.setAttribute("y2", parseFloat(line.getAttribute("y2")) + y);
+            }
+            startX = e.clientX;
+            startY = e.clientY;
+        }
+
+        function onMouseUp() {
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    }
+
+    window.onload = function() {
+        buildTree(Object.values(fromJson(p)).find(p => p.name == "Yzhak").id, fromJson(p), document.getElementById("tree"), document.getElementById("svg"));
+    }
+</script>
+
+</html>
