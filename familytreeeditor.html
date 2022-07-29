@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" style="width:100%; height:100%;">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.jsdelivr.net/npm/short-unique-id@latest/dist/short-unique-id.min.js"></script>
+    <title>Family Tree Editor</title>
+</head>
+
+<body>
+    <form id="form">
+        <label for="name">Name:</label>
+        <input name="name" id="nameE">
+        <label for="spouse">Spouse's ID:</label>
+        <input name="spouse" id="spouseE">
+        <label for="children">Children's IDs:</label>
+        <input name="children" id="childrenE">
+        <input type="submit" value="Create New Person">
+    </form>
+    <br>
+    <form id="updateform">
+        <label for="edit">ID of person to update (blank fields will be ignored):</label>
+        <input name="edit" id="IDE">
+        <input type="submit" value="Update">
+    </form>
+    <dl id="people"></ul>
+</body>
+
+<style>
+    dl dt {
+        list-style-position: outside;
+        padding: 5px;
+        border-top: 2px black solid;
+    }
+</style>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.9.1/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/9.9.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCisdE11OIddJMzUd3nvj8NciSQhqQNENg",
+      authDomain: "family-tree-e.firebaseapp.com",
+      projectId: "family-tree-e",
+      storageBucket: "family-tree-e.appspot.com",
+      messagingSenderId: "469768610453",
+      appId: "1:469768610453:web:46fabdf4f1edb39c4e319c"
+    };
+
+    const db = getFirestore(initializeApp(firebaseConfig));
+    const uid = new ShortUniqueId({ length: 10 });
+
+    function docPath(id) {
+        return doc(db, "people", id);
+    }
+
+    async function fromDb() {
+        const people = await getDocs(collection(db, "people"));
+        const personMap = {};
+        people.forEach((person) => {
+            personMap[person.data().id] = person.data();
+        });
+        return personMap;
+    }
+
+    async function addPerson(id, name, spouse, children) {
+        const person = {
+            "id": id,
+            "name": name
+        };
+        if (spouse) {
+            person.spouse = spouse;
+        }
+        if (children && children.length > 0) {
+            person.children = children;
+        }
+        await setDoc(docPath(id), person).then(() => location.reload());
+    }
+
+    async function updatePerson(id, updates) {
+        await updateDoc(docPath(id), updates).then(() => location.reload());
+    }
+
+    async function deletePerson(id) {
+        await deleteDoc(docPath(id)).then(() => location.reload());
+    }
+
+    window.onload = function() {
+        const list = document.getElementById("people");
+        fromDb().then((people) => {
+            Object.values(people).forEach(p => {
+                let element = document.createElement("dt");
+                element.innerText = p.name;
+                list.appendChild(element);
+                for (const key in p) {
+                    element = document.createElement("dd");
+                    element.innerText = `${key}: ${p[key]}`;
+                    list.append(element);
+                }
+                element = document.createElement("button");
+                element.innerText = "Delete";
+                element.onclick = () => deletePerson(p.id);
+                list.append(element);
+            });
+        });
+
+        const nameE = document.getElementById("nameE");
+        const spouseE = document.getElementById("spouseE");
+        const childrenE = document.getElementById("childrenE");
+        const IDE = document.getElementById("IDE");
+
+        document.getElementById("form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const name = nameE.value;
+            nameE.value = "";
+            const spouse = spouseE.value || undefined;
+            spouseE.value = "";
+            const children = childrenE.value? childrenE.value.replace(/\s+/g, "").split(",").filter(c => c) : undefined;
+            childrenE.value = "";
+            addPerson(name + uid(), name, spouse, children).then(() => console.log("sdljfsdkljfnskdfjhnbsdkhbsdkfhb"));
+        });
+
+        document.getElementById("updateform").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const updates = {};
+            if (nameE.value) {
+                updates.name = nameE.value;
+                nameE.value = "";
+            }
+            if (spouseE.value) {
+                updates.spouse = spouseE.value;
+                spouseE.value = "";
+            }
+            if (childrenE.value) {
+                updates.children = childrenE.value.replace(/\s+/g, "").split(",").filter(c => c);
+                childrenE.value = "";
+            }
+            updatePerson(IDE.value, updates);
+        });
+    }
+</script>
+
+</html>
