@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
     <title>Family Tree</title>
 </head>
 
@@ -18,8 +19,7 @@
     .person {
         position: absolute;
         display: inline-block;
-        border: solid;
-        border-width: 2px;
+        border: solid 2px;
         padding: 5px;
     }
 
@@ -33,55 +33,44 @@
     }
 </style>
 
-<script>
-    function fromJson(people) {
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.9.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.9.1/firebase-firestore.js";
 
-        const personMap = JSON.parse(people).reduce(function (obj, p) {
-            obj[p.id] = p;
-            return obj;
-        }, {});
+    const firebaseConfig = {
+      apiKey: "AIzaSyCisdE11OIddJMzUd3nvj8NciSQhqQNENg",
+      authDomain: "family-tree-e.firebaseapp.com",
+      projectId: "family-tree-e",
+      storageBucket: "family-tree-e.appspot.com",
+      messagingSenderId: "469768610453",
+      appId: "1:469768610453:web:46fabdf4f1edb39c4e319c"
+    };
 
-        for (const person of Object.values(personMap)) {
-            person.spouse = personMap[person.spouse];
+    const db = getFirestore(initializeApp(firebaseConfig));
+
+    async function fromDb() {
+        const people = await getDocs(collection(db, "people"));
+        const personMap = {};
+        people.forEach((person) => {
+            const pObj = person.data()
+            personMap[pObj.id] = pObj;
+        });
+        linkPeople(personMap);
+        return personMap;
+    }
+
+    function linkPeople(people) {
+        for (const person of Object.values(people)) {
+            person.spouse = people[person.spouse];
             const childrenIDs = person.children;
             person.children = [];
             if (childrenIDs) {
-                for (const s of childrenIDs) {
-                    person.children.push(personMap[s]);
+                for (const c of childrenIDs) {
+                    person.children.push(people[c]);
                 }
             }
         }
-
-        return personMap;
-
     }
-
-    function toJson(personMap) {
-
-        const people = [];
-
-        for (const person of Object.values(personMap)) {
-            if (person.spouse) {
-                person.spouse = person.spouse.id;
-            }
-            if (person.children.length == 0) {
-                delete person.children;
-            } else {
-                const children = person.children;
-                person.children = [];
-                for (const s of children) {
-                    person.children.push(s.id);
-                }
-            }
-            people.push(person);
-        }
-
-        return JSON.stringify(people);
-
-    }
-
-    // dummy data REMOVE REMOVE REMOVE REMOVE REMOVE
-    var p = JSON.stringify([]);
 
     const TREE_X = 1200;
     const TREE_Y = -500;
@@ -89,7 +78,7 @@
     const GEN_SPACE = 55;
 
     function buildTree(rootId, people, tree, svg) {
-        const parent = Object.values(people).find(p => p.children.find(c => c.id == rootId));
+        const parent = Object.values(people).find(p => p.children && p.children.find(c => c.id == rootId));
         rootId = parent ? parent.id : rootId;
 
         const divs = {};
@@ -259,7 +248,9 @@
     }
 
     window.onload = function() {
-        buildTree(Object.values(fromJson(p)).find(p => p.name == "Yzhak").id, fromJson(p), document.getElementById("tree"), document.getElementById("svg"));
+        fromDb().then((people) => {
+            buildTree(Object.values(people).find(p => p.name == "Asaf").id, people, document.getElementById("tree"), document.getElementById("svg"));
+        });
     }
 </script>
 
