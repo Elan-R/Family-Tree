@@ -10,21 +10,25 @@
 </head>
 
 <body>
-    <form id="form">
+    <form id="newPerson">
         <label for="name">Name:</label>
         <input name="name" id="nameE">
-        <label for="spouse">Spouse's ID:</label>
-        <input name="spouse" id="spouseE">
-        <label for="children">Children's IDs:</label>
-        <input name="children" id="childrenE">
         <input type="submit" value="Create New Person">
     </form>
-    <br>
-    <form id="updateform">
-        <label for="edit">ID of person to update (blank fields will be ignored):</label>
-        <input name="edit" id="IDE">
-        <input type="submit" value="Update">
+
+    <form id="addSpouse" class="hidden">
+        <label for="spouse">Spouse ID:</label>
+        <select name="spouse" id="spouseE"></select>
+        <input type="submit" value="Add Spouse">
     </form>
+
+    <form id="addChild" class="hidden">
+        <label for="spouse">Child ID:</label>
+        <select name="spouse" id="childrenE"></select>
+        <input type="submit" value="Add Child">
+    </form>
+    <br>
+    <button onclick="addPersonMenu()">New Person</button>
     <dl id="people"></ul>
 </body>
 
@@ -33,6 +37,10 @@
         list-style-position: outside;
         padding: 5px;
         border-top: 2px black solid;
+    }
+
+    .hidden {
+        display: none;
     }
 </style>
 
@@ -65,9 +73,9 @@
         return personMap;
     }
 
-    async function addPerson(id, name, spouse, children) {
+    async function addPerson(name, spouse, children) {
         const person = {
-            "id": id,
+            "id": name + " " + uid(),
             "name": name
         };
         if (spouse) {
@@ -76,7 +84,7 @@
         if (children && children.length > 0) {
             person.children = children;
         }
-        await setDoc(docPath(id), person).then(() => location.reload());
+        await setDoc(docPath(person.id), person).then(() => location.reload());
     }
 
     async function updatePerson(id, updates) {
@@ -88,6 +96,13 @@
     }
 
     window.onload = function() {
+        const newPersonForm = document.getElementById("newPerson");
+        const addSpouseForm = document.getElementById("addSpouse");
+        const addChildForm = document.getElementById("addChild");
+        const nameE = document.getElementById("nameE");
+        const spouseE = document.getElementById("spouseE");
+        const childrenE = document.getElementById("childrenE");
+
         const list = document.getElementById("people");
         fromDb().then((people) => {
             Object.values(people).forEach(p => {
@@ -100,46 +115,57 @@
                     list.append(element);
                 }
                 element = document.createElement("button");
+                element.innerText = "Add Spouse";
+                element.onclick = function() {
+                    newPersonForm.classList.add("hidden");
+                    addChildForm.classList.add("hidden");
+                    addSpouseForm.classList.remove("hidden");
+                    addSpouseForm.addEventListener("submit", function(e) {
+                        e.preventDefault();
+                        updatePerson(p.id, {"spouse": spouseE.value});
+                        spouseE.value = "";
+                    });
+                };
+                list.append(element);
+                element = document.createElement("button");
+                element.innerText = "Add Child";
+                element.onclick = function() {
+                    newPersonForm.classList.add("hidden");
+                    addSpouseForm.classList.add("hidden");
+                    addChildForm.classList.remove("hidden");
+                    addChildForm.addEventListener("submit", function(e) {
+                        e.preventDefault();
+                        p.children = p.children || [];
+                        const childrenIDs = [];
+                        for (const child of p.children) {
+                            childrenIDs.push(child);
+                        }
+                        childrenIDs.push(childrenE.value);
+                        updatePerson(p.id, {"children": childrenIDs});
+                        childrenE.value = "";
+                    });
+                };
+                list.append(element);
+                element = document.createElement("button");
                 element.innerText = "Delete";
                 element.onclick = () => deletePerson(p.id);
                 list.append(element);
             });
+            for (const id in people) {
+                const option1 = document.createElement("option");
+                const option2 = document.createElement("option");
+                option1.innerText = option1.value = option2.innerText = option2.value = id;
+                spouseE.appendChild(option1);
+                childrenE.appendChild(option2);
+            }
         });
 
-        const nameE = document.getElementById("nameE");
-        const spouseE = document.getElementById("spouseE");
-        const childrenE = document.getElementById("childrenE");
-        const IDE = document.getElementById("IDE");
-
-        document.getElementById("form").addEventListener("submit", function(e) {
+        newPersonForm.addEventListener("submit", function(e) {
             e.preventDefault();
-            const name = nameE.value;
+            addPerson(nameE.value);
             nameE.value = "";
-            const spouse = spouseE.value || undefined;
-            spouseE.value = "";
-            const children = childrenE.value? childrenE.value.replace(/\s+/g, "").split(",").filter(c => c) : undefined;
-            childrenE.value = "";
-            addPerson(name + uid(), name, spouse, children).then(() => console.log("sdljfsdkljfnskdfjhnbsdkhbsdkfhb"));
-        });
-
-        document.getElementById("updateform").addEventListener("submit", function(e) {
-            e.preventDefault();
-            const updates = {};
-            if (nameE.value) {
-                updates.name = nameE.value;
-                nameE.value = "";
-            }
-            if (spouseE.value) {
-                updates.spouse = spouseE.value;
-                spouseE.value = "";
-            }
-            if (childrenE.value) {
-                updates.children = childrenE.value.replace(/\s+/g, "").split(",").filter(c => c);
-                childrenE.value = "";
-            }
-            updatePerson(IDE.value, updates);
         });
     }
 </script>
 
-</html>
+</html> 
