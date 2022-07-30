@@ -72,8 +72,8 @@
         }
     }
 
-    const TREE_X = 1200;
-    const TREE_Y = -500;
+    var TREE_X;
+    var TREE_Y;
     const PERSON_SPACE = 20;
     const GEN_SPACE = 55;
 
@@ -248,8 +248,12 @@
     }
 
     window.onload = function() {
+        const tree = document.getElementById("tree");
+        const screenRect = tree.getBoundingClientRect();
+        TREE_X = screenRect.right / 2;
+        TREE_Y = -screenRect.bottom / 2;
         fromDb().then((people) => {
-            buildTree(Object.values(people).find(p => p.name == "Asaf").id, people, document.getElementById("tree"), document.getElementById("svg"));
+            buildTree(Object.values(people).find(p => p.name == "Asaf").id, people, tree, document.getElementById("svg"));
         });
     }
 </script>
