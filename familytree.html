@@ -250,8 +250,8 @@
     window.onload = function() {
         const tree = document.getElementById("tree");
         const screenRect = tree.getBoundingClientRect();
-        TREE_X = screenRect.right / 2;
-        TREE_Y = -screenRect.bottom / 2;
+        TREE_X = screenRect.right;
+        TREE_Y = 0;
         fromDb().then((people) => {
             buildTree(Object.values(people).find(p => p.name == "Asaf").id, people, tree, document.getElementById("svg"));
         });
