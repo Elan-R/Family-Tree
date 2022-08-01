@@ -28,7 +28,7 @@
         <input type="submit" value="Add Child">
     </form>
     <br>
-    <button onclick="addPersonMenu()">New Person</button>
+    <button id="addPerson">New Person</button>
     <dl id="people"></ul>
 </body>
 
@@ -103,6 +103,13 @@
         const spouseE = document.getElementById("spouseE");
         const childrenE = document.getElementById("childrenE");
 
+        document.getElementById("addPerson").onclick = function() {
+            addSpouseForm.classList.add("hidden");
+            addChildForm.classList.add("hidden");
+            newPersonForm.classList.remove("hidden");
+            window.scrollTo(0, 0);
+        }
+
         const list = document.getElementById("people");
         fromDb().then((people) => {
             Object.values(people).forEach(p => {
@@ -122,9 +129,28 @@
                     addSpouseForm.classList.remove("hidden");
                     addSpouseForm.addEventListener("submit", function(e) {
                         e.preventDefault();
-                        updatePerson(p.id, {"spouse": spouseE.value});
+                        const spouse = people[spouseE.value];
+                        const children = [];
+                        if (p.children) {
+                            for (const c of p.children) {
+                                children.push(c);
+                            }
+                        }
+                        if (spouse.children) {
+                            for (const c of spouse.children) {
+                                children.push(c);
+                            }
+                        }
+                        let updates = {"spouse": spouseE.value};
+                        if (children.length > 0) {
+                            updates.children = children;
+                        }
+                        updatePerson(p.id, updates);
+                        updates.spouse = p.id;
+                        updatePerson(spouse.id, updates);
                         spouseE.value = "";
                     });
+                    window.scrollTo(0, 0);
                 };
                 list.append(element);
                 element = document.createElement("button");
@@ -144,6 +170,7 @@
                         updatePerson(p.id, {"children": childrenIDs});
                         childrenE.value = "";
                     });
+                    window.scrollTo(0, 0);
                 };
                 list.append(element);
                 element = document.createElement("button");
@@ -155,11 +182,11 @@
                 const option1 = document.createElement("option");
                 const option2 = document.createElement("option");
                 option1.innerText = option1.value = option2.innerText = option2.value = id;
+                option1.person = option2.person = people[id];
                 spouseE.appendChild(option1);
                 childrenE.appendChild(option2);
             }
         });
-
         newPersonForm.addEventListener("submit", function(e) {
             e.preventDefault();
             addPerson(nameE.value);
