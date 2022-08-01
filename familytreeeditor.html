@@ -17,9 +17,9 @@
     </form>
 
     <form id="addSpouse" class="hidden">
-        <label for="spouse">Spouse ID:</label>
+        <label for="spouse">Partner ID:</label>
         <select name="spouse" id="spouseE"></select>
-        <input type="submit" value="Add Spouse">
+        <input type="submit" value="Add Partner">
     </form>
 
     <form id="addChild" class="hidden">
@@ -118,11 +118,15 @@
                 list.appendChild(element);
                 for (const key in p) {
                     element = document.createElement("dd");
-                    element.innerText = `${key}: ${p[key]}`;
+                    if (key == "spouse") {
+                        element.innerText = `partner: ${p.spouse}`;
+                    } else {
+                        element.innerText = `${key}: ${p[key]}`;
+                    }
                     list.append(element);
                 }
                 element = document.createElement("button");
-                element.innerText = "Add Spouse";
+                element.innerText = "Add Partner";
                 element.onclick = function() {
                     newPersonForm.classList.add("hidden");
                     addChildForm.classList.add("hidden");
